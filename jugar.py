@@ -16,7 +16,7 @@ MAPA_EVALUACION = [
     [0, 2, 0, 0, 0, 0, 0, 0, 2, 0],
     [0, 2, 1, 2, 2, 2, 2, 0, 2, 0],
     [0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    [0, 0, 0, 0, 2, 0, 1, 1, 0, 0]
+    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 ]
 
 TAMANO_CELDA = 60
@@ -40,6 +40,11 @@ TABLA_Y = -35
 
 OFFSET_X = (ANCHO_PANTALLA - TABLERO_ANCHO) // 2
 OFFSET_Y = 170
+
+SALIR_X = 15
+SALIR_Y = 15
+SALIR_ANCHO = 110
+SALIR_ALTO = 55
 
 C_FONDO = (30, 30, 30)
 C_NORMAL = (220, 220, 220)
@@ -70,6 +75,7 @@ img_turno_canon = None
 img_pies = None
 img_victoria = None
 img_derrota = None
+img_salir = None
 turno_actual = "AZUL"
 
 
@@ -150,50 +156,112 @@ def dibujar_imagen_turno(pantalla):
     pantalla.blit(imagen, (x_turno, y_turno))
 
 
+def dibujar_boton_salir(pantalla):
+    """Dibuja el botón para volver al menú principal."""
+    if img_salir is None:
+        return
+
+    pantalla.blit(img_salir, (SALIR_X, SALIR_Y))
+
+
+def clic_en_boton_salir(mx, my):
+    """Indica si el clic cayó sobre el botón Salir."""
+    if img_salir is None:
+        return False
+
+    rect_salir = pygame.Rect(
+        SALIR_X,
+        SALIR_Y,
+        img_salir.get_width(),
+        img_salir.get_height()
+    )
+
+    return rect_salir.collidepoint((mx, my))
+
+
 def menu_principal(pantalla, fuente, fuente_grande):
     esperando_seleccion = True
     mapa_seleccionado = None
 
-    ancho_boton = 400
-    alto_boton = 60
-    x_boton = (ANCHO_PANTALLA // 2) - (ancho_boton // 2)
-    y_boton1 = ALTO_PANTALLA // 2 - 40
-    y_boton2 = ALTO_PANTALLA // 2 + 60
+    carpeta_actual = os.path.dirname(os.path.abspath(__file__))
+    ruta_inicio = os.path.join(carpeta_actual, "inicio.png")
+    ruta_boton_aleatorio = os.path.join(carpeta_actual, "mapaaleatorio.png")
+    ruta_boton_evaluacion = os.path.join(carpeta_actual, "mapadeevaluacion.png")
 
-    boton_aleatorio = pygame.Rect(x_boton, y_boton1, ancho_boton, alto_boton)
-    boton_evaluacion = pygame.Rect(x_boton, y_boton2, ancho_boton, alto_boton)
+    try:
+        fondo_inicio = pygame.image.load(ruta_inicio).convert()
+        fondo_inicio = pygame.transform.smoothscale(
+            fondo_inicio,
+            (ANCHO_PANTALLA, ALTO_PANTALLA)
+        )
+    except FileNotFoundError:
+        fondo_inicio = None
+
+    try:
+        imagen_boton_aleatorio = pygame.image.load(ruta_boton_aleatorio).convert_alpha()
+        imagen_boton_evaluacion = pygame.image.load(ruta_boton_evaluacion).convert_alpha()
+
+        imagen_boton_aleatorio = recortar_transparencia(imagen_boton_aleatorio)
+        imagen_boton_evaluacion = recortar_transparencia(imagen_boton_evaluacion)
+
+        ancho_boton_img = 275
+        alto_boton_img = 150
+
+        imagen_boton_aleatorio = pygame.transform.smoothscale(
+            imagen_boton_aleatorio,
+            (ancho_boton_img, alto_boton_img)
+        )
+
+        imagen_boton_evaluacion = pygame.transform.smoothscale(
+            imagen_boton_evaluacion,
+            (ancho_boton_img, alto_boton_img)
+        )
+
+        # Posiciones independientes para cada botón.
+        # No se altera el tamaño de los botones.
+        x_boton1 = 130
+        y_boton1 = 700
+
+        x_boton2 = 480
+        y_boton2 = 700
+
+        boton_aleatorio = pygame.Rect(x_boton1, y_boton1, ancho_boton_img, alto_boton_img)
+        boton_evaluacion = pygame.Rect(x_boton2, y_boton2, ancho_boton_img, alto_boton_img)
+
+    except FileNotFoundError:
+        imagen_boton_aleatorio = None
+        imagen_boton_evaluacion = None
+
+        ancho_boton = 400
+        alto_boton = 60
+        x_boton = (ANCHO_PANTALLA // 2) - (ancho_boton // 2)
+        y_boton1 = ALTO_PANTALLA // 2 - 40
+        y_boton2 = ALTO_PANTALLA // 2 + 60
+
+        boton_aleatorio = pygame.Rect(x_boton, y_boton1, ancho_boton, alto_boton)
+        boton_evaluacion = pygame.Rect(x_boton, y_boton2, ancho_boton, alto_boton)
 
     gestor = GestorEscenarios()
 
     while esperando_seleccion:
-        pantalla.fill(C_FONDO)
+        if fondo_inicio is not None:
+            pantalla.blit(fondo_inicio, (0, 0))
+        else:
+            pantalla.fill(C_FONDO)
+
         mx, my = pygame.mouse.get_pos()
 
-        dibujar_texto(
-            pantalla,
-            fuente_grande,
-            "BATALLA CTF: Q-LEARNING",
-            ANCHO_PANTALLA // 2 - 220,
-            MARGEN_SUP * 2,
-            C_BASE_US
-        )
+        if imagen_boton_aleatorio is not None and imagen_boton_evaluacion is not None:
+            pantalla.blit(imagen_boton_aleatorio, (x_boton1, y_boton1))
+            pantalla.blit(imagen_boton_evaluacion, (x_boton2, y_boton2))
+        else:
+            color_b1 = C_BOTON_HOVER if boton_aleatorio.collidepoint((mx, my)) else C_BOTON
+            pygame.draw.rect(pantalla, color_b1, boton_aleatorio, border_radius=10)
+            dibujar_texto(pantalla, fuente, "1. Jugar en Mapa Aleatorio", x_boton + 70, y_boton1 + 15)
 
-        dibujar_texto(
-            pantalla,
-            fuente,
-            "Selecciona el modo de juego:",
-            ANCHO_PANTALLA // 2 - 130,
-            MARGEN_SUP * 4,
-            C_TEXTO
-        )
-
-        color_b1 = C_BOTON_HOVER if boton_aleatorio.collidepoint((mx, my)) else C_BOTON
-        pygame.draw.rect(pantalla, color_b1, boton_aleatorio, border_radius=10)
-        dibujar_texto(pantalla, fuente, "1. Jugar en Mapa Aleatorio", x_boton + 70, y_boton1 + 15)
-
-        color_b2 = C_BOTON_HOVER if boton_evaluacion.collidepoint((mx, my)) else C_BOTON
-        pygame.draw.rect(pantalla, color_b2, boton_evaluacion, border_radius=10)
-        dibujar_texto(pantalla, fuente, "2. Jugar en Mapa de Evaluación", x_boton + 50, y_boton2 + 15)
+            color_b2 = C_BOTON_HOVER if boton_evaluacion.collidepoint((mx, my)) else C_BOTON
+            pygame.draw.rect(pantalla, color_b2, boton_evaluacion, border_radius=10)
+            dibujar_texto(pantalla, fuente, "2. Jugar en Mapa de Evaluación", x_boton + 50, y_boton2 + 15)
 
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -331,6 +399,7 @@ def dibujar_escenario(pantalla, env, fuente, casillas_canon=None):
     else:
         pantalla.fill(C_FONDO)
 
+    dibujar_boton_salir(pantalla)
     dibujar_tabla_turnos(pantalla, env, fuente)
     dibujar_marco_tablero(pantalla)
 
@@ -414,7 +483,7 @@ def dibujar_escenario(pantalla, env, fuente, casillas_canon=None):
 
 
 def cargar_imagenes_pikmin():
-    global pikmin_usuario, pikmin_enemigo, textura_madera, textura_arbusto, textura_muro, fruta_usuario, fruta_enemigo, imagen_fondo, imagen_margen, tabla_turnos, img_turno_azul, img_turno_rojo, img_turno_canon, img_pies, img_victoria, img_derrota
+    global pikmin_usuario, pikmin_enemigo, textura_madera, textura_arbusto, textura_muro, fruta_usuario, fruta_enemigo, imagen_fondo, imagen_margen, tabla_turnos, img_turno_azul, img_turno_rojo, img_turno_canon, img_pies, img_victoria, img_derrota, img_salir
 
     carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 
@@ -432,6 +501,7 @@ def cargar_imagenes_pikmin():
     ruta_pies = os.path.join(carpeta_actual, "pies.png")
     ruta_victoria = os.path.join(carpeta_actual, "victoria.png")
     ruta_derrota = os.path.join(carpeta_actual, "derrota.png")
+    ruta_salir = os.path.join(carpeta_actual, "salir.png")
 
     archivos_frutas = [
         "cerezas.png",
@@ -456,6 +526,7 @@ def cargar_imagenes_pikmin():
         img_pies = pygame.image.load(ruta_pies).convert_alpha()
         img_victoria = pygame.image.load(ruta_victoria).convert_alpha()
         img_derrota = pygame.image.load(ruta_derrota).convert_alpha()
+        img_salir = pygame.image.load(ruta_salir).convert_alpha()
 
         frutas_cargadas = []
         for nombre_fruta in archivos_frutas:
@@ -501,6 +572,8 @@ def cargar_imagenes_pikmin():
 
         img_victoria = pygame.transform.smoothscale(img_victoria, (420, 400))
         img_derrota = pygame.transform.smoothscale(img_derrota, (420, 400))
+        img_salir = recortar_transparencia(img_salir)
+        img_salir = pygame.transform.smoothscale(img_salir, (SALIR_ANCHO, SALIR_ALTO))
         
         print("Imágenes, texturas y frutas cargadas correctamente.")
 
@@ -520,6 +593,7 @@ def cargar_imagenes_pikmin():
         print("- canon.png")
         print("- victoria.png")
         print("- derrota.png")
+        print("- salir.png")
         print("- cerezas.png")
         print("- fresa.png")
         print("- granada.png")
@@ -559,10 +633,18 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-            if evento.type == pygame.MOUSEBUTTONDOWN and estado_juego == "TURNO_USUARIO":
+            if evento.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = pygame.mouse.get_pos()
 
-                if OFFSET_X <= mx < OFFSET_X + TABLERO_ANCHO and OFFSET_Y <= my < OFFSET_Y + TABLERO_ALTO:
+                if clic_en_boton_salir(mx, my):
+                    mapa_juego = menu_principal(pantalla, fuente, fuente_grande)
+                    env, enemigo = inicializar_juego(mapa_juego)
+                    terminado = False
+                    estado_juego = "TURNO_USUARIO"
+                    turno_actual = "AZUL"
+                    continue
+
+                if estado_juego == "TURNO_USUARIO" and OFFSET_X <= mx < OFFSET_X + TABLERO_ANCHO and OFFSET_Y <= my < OFFSET_Y + TABLERO_ALTO:
                     col_click = (mx - OFFSET_X) // TAMANO_CELDA
                     fila_click = (my - OFFSET_Y) // TAMANO_CELDA
 
