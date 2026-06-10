@@ -45,11 +45,11 @@ C_FONDO = (30, 30, 30)
 C_NORMAL = (220, 220, 220)
 C_ARENA = (237, 201, 175)
 C_OBSTACULO = (60, 60, 60)
-C_USUARIO = (0, 120, 255)
-C_ENEMIGO = (255, 50, 50)
+C_USUARIO = (255, 255, 255)
+C_ENEMIGO = (255, 255, 255)
 C_BASE_US = (0, 255, 255)
 C_BASE_EN = (255, 0, 255)
-C_CANON = (255, 140, 0)
+C_CANON = (0, 0, 0)
 C_TEXTO = (255, 255, 255)
 C_BOTON = (70, 130, 180)
 C_BOTON_HOVER = (100, 149, 237)
@@ -68,6 +68,8 @@ img_turno_azul = None
 img_turno_rojo = None
 img_turno_canon = None
 img_pies = None
+img_victoria = None
+img_derrota = None
 turno_actual = "AZUL"
 
 
@@ -230,23 +232,30 @@ def dibujar_tabla_turnos(pantalla, env, fuente):
         return
 
     pantalla.blit(tabla_turnos, (TABLA_X, TABLA_Y))
-    # Pies encima de la tabla de turnos
-if img_pies is not None:
-    pantalla.blit(img_pies, (TABLA_X + 210, TABLA_Y + 10))
+
+    # Pies encima de la tabla de turnos.
+    # Modifica estos valores si después quieres moverlo:
+    # PIES_X = TABLA_X + 210  -> izquierda/derecha
+    # PIES_Y = TABLA_Y + 10   -> arriba/abajo
+    if img_pies is not None:
+    # Pie dentro del cuadro azul
+        pantalla.blit(img_pies, (TABLA_X + 60, TABLA_Y + 90))
+
+    # Pie dentro del cuadro rojo
+        pantalla.blit(img_pies, (TABLA_X + TABLA_ANCHO - 135, TABLA_Y + 90))
+
     dibujar_imagen_turno(pantalla)
 
-    
-
-    estado_us = "CON BANDERA" if not env.bandera_enemigo_en_base else ""
-    estado_en = "CON BANDERA" if not env.bandera_usuario_en_base else ""
+    estado_us = "" if not env.bandera_enemigo_en_base else ""
+    estado_en = "" if not env.bandera_usuario_en_base else ""
 
     # Textos dentro del cuadro azul.
     dibujar_texto(
         pantalla,
         fuente,
-        f"Movs: {env.movimientos_usuario}",
-        TABLA_X + 110,
-        TABLA_Y + 108,
+        f"{env.movimientos_usuario}",
+        TABLA_X + 125,
+        TABLA_Y + 100,
         C_USUARIO
     )
 
@@ -264,9 +273,9 @@ if img_pies is not None:
     dibujar_texto(
         pantalla,
         fuente,
-        f"Movs: {env.movimientos_enemigo}",
-        TABLA_X + TABLA_ANCHO - 150,
-        TABLA_Y + 108,
+        f"{env.movimientos_enemigo}",
+        TABLA_X + TABLA_ANCHO - 80,
+        TABLA_Y + 100,
         C_ENEMIGO
     )
 
@@ -395,7 +404,7 @@ def dibujar_escenario(pantalla, env, fuente, casillas_canon=None):
         dibujar_texto(
             pantalla,
             fuente,
-            "¡CAÑÓN ACTIVADO AL FINAL DEL TURNO!",
+            "",
             OFFSET_X,
             OFFSET_Y + TABLERO_ALTO + 25,
             C_CANON
@@ -405,7 +414,7 @@ def dibujar_escenario(pantalla, env, fuente, casillas_canon=None):
 
 
 def cargar_imagenes_pikmin():
-    global pikmin_usuario, pikmin_enemigo, textura_madera, textura_arbusto, textura_muro, fruta_usuario, fruta_enemigo, imagen_fondo, imagen_margen, tabla_turnos, img_turno_azul, img_turno_rojo, img_turno_canon, img_pies
+    global pikmin_usuario, pikmin_enemigo, textura_madera, textura_arbusto, textura_muro, fruta_usuario, fruta_enemigo, imagen_fondo, imagen_margen, tabla_turnos, img_turno_azul, img_turno_rojo, img_turno_canon, img_pies, img_victoria, img_derrota
 
     carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 
@@ -421,6 +430,8 @@ def cargar_imagenes_pikmin():
     ruta_turno_rojo = os.path.join(carpeta_actual, "rojo.png")
     ruta_turno_canon = os.path.join(carpeta_actual, "canon.png")
     ruta_pies = os.path.join(carpeta_actual, "pies.png")
+    ruta_victoria = os.path.join(carpeta_actual, "victoria.png")
+    ruta_derrota = os.path.join(carpeta_actual, "derrota.png")
 
     archivos_frutas = [
         "cerezas.png",
@@ -443,6 +454,8 @@ def cargar_imagenes_pikmin():
         img_turno_rojo = pygame.image.load(ruta_turno_rojo).convert_alpha()
         img_turno_canon = pygame.image.load(ruta_turno_canon).convert_alpha()
         img_pies = pygame.image.load(ruta_pies).convert_alpha()
+        img_victoria = pygame.image.load(ruta_victoria).convert_alpha()
+        img_derrota = pygame.image.load(ruta_derrota).convert_alpha()
 
         frutas_cargadas = []
         for nombre_fruta in archivos_frutas:
@@ -474,8 +487,8 @@ def cargar_imagenes_pikmin():
 
         img_turno_canon = preparar_imagen_turno(
             img_turno_canon,
-            ancho_max=90,
-            alto_max=30
+            ancho_max=120,
+            alto_max=40
 
             
         )
@@ -485,6 +498,9 @@ def cargar_imagenes_pikmin():
             ancho_max=50,
             alto_max=50
         )
+
+        img_victoria = pygame.transform.smoothscale(img_victoria, (420, 400))
+        img_derrota = pygame.transform.smoothscale(img_derrota, (420, 400))
         
         print("Imágenes, texturas y frutas cargadas correctamente.")
 
@@ -502,6 +518,8 @@ def cargar_imagenes_pikmin():
         print("- azul.png")
         print("- rojo.png")
         print("- canon.png")
+        print("- victoria.png")
+        print("- derrota.png")
         print("- cerezas.png")
         print("- fresa.png")
         print("- granada.png")
@@ -519,8 +537,8 @@ def main():
     pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))
     pygame.display.set_caption("CTF Q-Learning")
 
-    fuente = pygame.font.SysFont("Arial", 20, bold=True)
-    fuente_grande = pygame.font.SysFont("Arial", 40, bold=True)
+    fuente = pygame.font.SysFont("Aptos Slab Black", 32, bold=True)
+    fuente_grande = pygame.font.SysFont("Aptos Slab Black", 40, bold=True)
     reloj = pygame.time.Clock()
 
     cargar_imagenes_pikmin()
@@ -600,14 +618,21 @@ def main():
             msg = "¡VICTORIA!" if env.pos_usuario == env.base_usuario and not env.bandera_enemigo_en_base else "DERROTA"
             color_msg = C_BASE_US if msg == "¡VICTORIA!" else C_ENEMIGO
 
-            dibujar_texto(
-                pantalla,
-                fuente_grande,
-                msg,
-                ANCHO_PANTALLA // 2 - 90,
-                OFFSET_Y + TABLERO_ALTO + 25,
-                color_msg
-            )
+            imagen_final = img_victoria if msg == "¡VICTORIA!" else img_derrota
+
+            if imagen_final is not None:
+                x_final = (ANCHO_PANTALLA - imagen_final.get_width()) // 2
+                y_final = (ALTO_PANTALLA - imagen_final.get_height()) // 2
+                pantalla.blit(imagen_final, (x_final, y_final))
+            else:
+                dibujar_texto(
+                    pantalla,
+                    fuente_grande,
+                    msg,
+                    ANCHO_PANTALLA // 2 - 90,
+                    OFFSET_Y + TABLERO_ALTO + 25,
+                    color_msg
+                )
 
             pygame.display.flip()
 
