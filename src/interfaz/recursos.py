@@ -1,11 +1,17 @@
 import pygame
 import sys
 import random
-from config import RUTA_IMG, RUTA_AUDIO
+from config import RUTA_IMG, RUTA_AUDIO, RUTA_ANIMACIONES
 from src.interfaz.constantes import TAMANO_CELDA, ANCHO_PANTALLA, ALTO_PANTALLA, TABLA_ANCHO, TABLA_ALTO, SALIR_ANCHO, SALIR_ALTO
 
+try:
+    from PIL import Image, ImageSequence
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    print("Advertencia: Pillow no está instalado. Ejecuta 'pip install Pillow' para ver GIFs.")
+
 class Recursos:
-    # Variables estáticas para los sonidos
     s_paso_normal = None
     s_paso_arena = None
     s_canon = None
@@ -13,7 +19,9 @@ class Recursos:
     s_fruta = None
     s_victoria = None
     s_derrota = None
+    s_boton = None
     sonidos_cargados = False
+    anim_muerte = [] # <-- LISTA QUE GUARDARÁ LOS CUADROS DEL GIF
 
     @staticmethod
     def recortar_transparencia(imagen):
@@ -28,6 +36,17 @@ class Recursos:
 
     @classmethod
     def cargar_todo(cls):
+        # --- CARGA DE ANIMACIONES (GIF) ---
+        if HAS_PIL:
+            try:
+                gif = Image.open(str(RUTA_ANIMACIONES / "muerte.gif"))
+                for frame in ImageSequence.Iterator(gif):
+                    frame_rgba = frame.convert("RGBA")
+                    pg_img = pygame.image.fromstring(frame_rgba.tobytes(), frame_rgba.size, frame_rgba.mode)
+                    cls.anim_muerte.append(pg_img)
+            except Exception as e:
+                print(f"Advertencia: No se pudo cargar muerte.gif ({e})")
+
         # --- CARGA DE AUDIO ---
         try:
             pygame.mixer.init()
@@ -38,18 +57,17 @@ class Recursos:
             cls.s_fruta = pygame.mixer.Sound(str(RUTA_AUDIO / "atrapar_fruta.wav"))
             cls.s_victoria = pygame.mixer.Sound(str(RUTA_AUDIO / "victoria.wav"))
             cls.s_derrota = pygame.mixer.Sound(str(RUTA_AUDIO / "derrota.wav"))
+            cls.s_boton = pygame.mixer.Sound(str(RUTA_AUDIO / "botones.wav")) 
             
-            # Ajuste de volumen
             cls.s_paso_normal.set_volume(0.6)
             cls.s_paso_arena.set_volume(0.6)
             cls.s_canon.set_volume(0.8)
             cls.s_pikmin.set_volume(0.8)
+            cls.s_boton.set_volume(0.7) 
             
-            # Música de fondo
             pygame.mixer.music.load(str(RUTA_AUDIO / "musica_fondo.wav"))
             pygame.mixer.music.set_volume(0.2)
-            pygame.mixer.music.play(-1) # -1 significa Bucle Infinito
-            
+            pygame.mixer.music.play(-1) 
             cls.sonidos_cargados = True
         except Exception as e:
             print(f"Advertencia: No se pudieron cargar los sonidos ({e})")

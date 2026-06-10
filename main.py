@@ -13,7 +13,7 @@ from src.interfaz.motor_juego import iniciar_partida
 
 def main():
     # Pre-inicializamos el mixer con un buffer pequeño (512) ANTES de iniciar pygame
-    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.mixer.pre_init(44100, -16, 2, 512) 
     pygame.init()
     
     pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA), pygame.RESIZABLE)
