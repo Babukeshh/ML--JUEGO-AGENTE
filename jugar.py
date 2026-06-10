@@ -76,6 +76,26 @@ img_pies = None
 img_victoria = None
 img_derrota = None
 img_salir = None
+
+# Audios del juego.
+# Coloca estos archivos dentro de la carpeta "efectosdesonido":
+# - atrapar_pikmin.wav
+# - atrapar_fruta.wav
+# - paso_1.wav
+# - paso_2.wav
+# - canon.wav
+# - musica_fondo.mp3
+# - victoria.wav
+# - derrota.wav
+sonido_atrapar_pikmin = None
+sonido_atrapar_fruta = None
+sonido_paso_1 = None
+sonido_paso_2 = None
+sonido_canon = None
+sonido_victoria = None
+sonido_derrota = None
+ruta_musica_fondo = None
+
 turno_actual = "AZUL"
 
 
@@ -177,6 +197,137 @@ def clic_en_boton_salir(mx, my):
     )
 
     return rect_salir.collidepoint((mx, my))
+
+
+def buscar_archivo_audio(carpeta_audio, nombre_base):
+    """Busca un audio por nombre base usando varias extensiones compatibles."""
+    extensiones = [".wav", ".ogg", ".mp3", ".weba", ".webm"]
+
+    for extension in extensiones:
+        ruta = os.path.join(carpeta_audio, nombre_base + extension)
+        if os.path.exists(ruta):
+            return ruta
+
+    return None
+
+
+def cargar_sonido(carpeta_audio, nombre_base):
+    """Carga un efecto de sonido si existe. Si no existe, devuelve None."""
+    ruta = buscar_archivo_audio(carpeta_audio, nombre_base)
+
+    if ruta is None:
+        print(f"AVISO: No se encontró el audio '{nombre_base}' en la carpeta efectosdesonido.")
+        return None
+
+    try:
+        return pygame.mixer.Sound(ruta)
+    except pygame.error as error:
+        print(f"AVISO: No se pudo cargar el audio {ruta}. Detalle: {error}")
+        return None
+
+
+def cargar_audios():
+    """Carga todos los efectos de sonido desde la carpeta efectosdesonido."""
+    global sonido_atrapar_pikmin, sonido_atrapar_fruta
+    global sonido_paso_1, sonido_paso_2, sonido_canon
+    global sonido_victoria, sonido_derrota, ruta_musica_fondo
+
+    carpeta_actual = os.path.dirname(os.path.abspath(__file__))
+    carpeta_audio = os.path.join(carpeta_actual, "efectosdesonido")
+
+    if not os.path.isdir(carpeta_audio):
+        print(f"AVISO: No se encontró la carpeta de audios: {carpeta_audio}")
+        return
+
+    sonido_atrapar_pikmin = cargar_sonido(carpeta_audio, "atrapar_pikmin")
+    sonido_atrapar_fruta = cargar_sonido(carpeta_audio, "atrapar_fruta")
+    sonido_paso_1 = cargar_sonido(carpeta_audio, "paso_1")
+    sonido_paso_2 = cargar_sonido(carpeta_audio, "paso_2")
+    sonido_canon = cargar_sonido(carpeta_audio, "canon")
+    sonido_victoria = cargar_sonido(carpeta_audio, "victoria")
+    sonido_derrota = cargar_sonido(carpeta_audio, "derrota")
+
+    ruta_musica_fondo = buscar_archivo_audio(carpeta_audio, "musica_fondo")
+
+
+def reproducir_sonido(sonido):
+    """Reproduce un efecto si está cargado."""
+    if sonido is not None:
+        sonido.play()
+
+
+def iniciar_musica_fondo():
+    """Reproduce la música de fondo en bucle."""
+    if ruta_musica_fondo is None:
+        print("AVISO: No se encontró musica_fondo en la carpeta efectosdesonido.")
+        return
+
+    try:
+        pygame.mixer.music.load(ruta_musica_fondo)
+        pygame.mixer.music.set_volume(0.35)
+        pygame.mixer.music.play(-1)
+    except pygame.error as error:
+        print(f"AVISO: No se pudo reproducir la música de fondo. Detalle: {error}")
+
+
+def reproducir_sonido_casilla(tipo_casilla):
+    """Reproduce sonido según el tipo de casilla recorrida."""
+    if tipo_casilla == 0:
+        reproducir_sonido(sonido_paso_1)
+    elif tipo_casilla == 1:
+        reproducir_sonido(sonido_paso_2)
+
+
+def reproducir_eventos_movimiento(
+    antes_pos_usuario,
+    antes_pos_enemigo,
+    antes_bandera_usuario,
+    antes_bandera_enemigo,
+    env
+):
+    """Reproduce sonidos de captura de fruta o Pikmin después de un movimiento."""
+    if antes_bandera_enemigo and not env.bandera_enemigo_en_base:
+        reproducir_sonido(sonido_atrapar_fruta)
+
+    if antes_bandera_usuario and not env.bandera_usuario_en_base:
+        reproducir_sonido(sonido_atrapar_fruta)
+
+    usuario_regreso_base = (
+        antes_pos_usuario != env.base_usuario
+        and env.pos_usuario == env.base_usuario
+        and antes_pos_usuario != env.pos_usuario
+    )
+
+    enemigo_regreso_base = (
+        antes_pos_enemigo != env.base_enemigo
+        and env.pos_enemigo == env.base_enemigo
+        and antes_pos_enemigo != env.pos_enemigo
+    )
+
+    if usuario_regreso_base or enemigo_regreso_base:
+        reproducir_sonido(sonido_atrapar_pikmin)
+
+
+def obtener_tipo_casilla_destino(env, posicion, accion):
+    """Obtiene el tipo de casilla destino según la acción del agente."""
+    fila, col = posicion
+    destino_fila = fila
+    destino_col = col
+
+    if accion == 0:
+        destino_fila -= 1
+    elif accion == 1:
+        destino_fila += 1
+    elif accion == 2:
+        destino_col -= 1
+    elif accion == 3:
+        destino_col += 1
+
+    if 0 <= destino_fila < env.filas and 0 <= destino_col < env.columnas:
+        return env.mapa[destino_fila][destino_col]
+
+    return None
+
 
 
 def menu_principal(pantalla, fuente, fuente_grande):
@@ -608,6 +759,11 @@ def main():
 
     pygame.init()
 
+    try:
+        pygame.mixer.init()
+    except pygame.error as error:
+        print(f"AVISO: No se pudo inicializar el audio. Detalle: {error}")
+
     pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))
     pygame.display.set_caption("CTF Q-Learning")
 
@@ -616,6 +772,8 @@ def main():
     reloj = pygame.time.Clock()
 
     cargar_imagenes_pikmin()
+    cargar_audios()
+    iniciar_musica_fondo()
 
     mapa_juego = menu_principal(pantalla, fuente, fuente_grande)
 
@@ -638,6 +796,7 @@ def main():
 
                 if clic_en_boton_salir(mx, my):
                     mapa_juego = menu_principal(pantalla, fuente, fuente_grande)
+                    iniciar_musica_fondo()
                     env, enemigo = inicializar_juego(mapa_juego)
                     terminado = False
                     estado_juego = "TURNO_USUARIO"
@@ -661,7 +820,24 @@ def main():
                         accion = 3
 
                     if accion is not None:
+                        tipo_casilla_destino = env.mapa[fila_click][col_click]
+                        antes_pos_usuario = env.pos_usuario
+                        antes_pos_enemigo = env.pos_enemigo
+                        antes_bandera_usuario = env.bandera_usuario_en_base
+                        antes_bandera_enemigo = env.bandera_enemigo_en_base
+
                         _, terminado = env.step(accion, es_turno_usuario=True)
+
+                        if env.pos_usuario != antes_pos_usuario:
+                            reproducir_sonido_casilla(tipo_casilla_destino)
+
+                        reproducir_eventos_movimiento(
+                            antes_pos_usuario,
+                            antes_pos_enemigo,
+                            antes_bandera_usuario,
+                            antes_bandera_enemigo,
+                            env
+                        )
 
                         if env.movimientos_usuario <= 0 or terminado:
                             if not terminado:
@@ -676,13 +852,31 @@ def main():
 
             estado_en = env.obtener_estado_relativo(es_usuario=False)
             accion = enemigo.elegir_accion_softmax(estado_en)
+            tipo_casilla_destino = obtener_tipo_casilla_destino(env, env.pos_enemigo, accion)
+            antes_pos_usuario = env.pos_usuario
+            antes_pos_enemigo = env.pos_enemigo
+            antes_bandera_usuario = env.bandera_usuario_en_base
+            antes_bandera_enemigo = env.bandera_enemigo_en_base
+
             _, terminado = env.step(accion, es_turno_usuario=False)
+
+            if env.pos_enemigo != antes_pos_enemigo:
+                reproducir_sonido_casilla(tipo_casilla_destino)
+
+            reproducir_eventos_movimiento(
+                antes_pos_usuario,
+                antes_pos_enemigo,
+                antes_bandera_usuario,
+                antes_bandera_enemigo,
+                env
+            )
 
             if env.movimientos_enemigo <= 0 or terminado:
                 if not terminado:
                     impacto, casillas_canon_actual = env.disparar_canon_visual()
 
                     if casillas_canon_actual:
+                        reproducir_sonido(sonido_canon)
                         turno_actual = "CANON"
                         dibujar_escenario(pantalla, env, fuente, casillas_canon_actual)
                         pygame.time.delay(1000)
@@ -699,6 +893,12 @@ def main():
         if estado_juego == "FIN":
             msg = "¡VICTORIA!" if env.pos_usuario == env.base_usuario and not env.bandera_enemigo_en_base else "DERROTA"
             color_msg = C_BASE_US if msg == "¡VICTORIA!" else C_ENEMIGO
+
+            pygame.mixer.music.stop()
+            if msg == "¡VICTORIA!":
+                reproducir_sonido(sonido_victoria)
+            else:
+                reproducir_sonido(sonido_derrota)
 
             imagen_final = img_victoria if msg == "¡VICTORIA!" else img_derrota
 
