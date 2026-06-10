@@ -17,10 +17,10 @@ def dibujar_escenario(p, env, ui, f, turno, casillas_canon=None):
     p.blit(img_t, (TABLA_X + (TABLA_ANCHO - img_t.get_width()) // 2 + 15, TABLA_Y + 100))
 
     dibujar_texto(p, f, str(env.movimientos_usuario), TABLA_X + 125, TABLA_Y + 100, C_USUARIO)
-    if not env.bandera_enemigo_en_base: dibujar_texto(p, f, "CON BANDERA", TABLA_X + 95, TABLA_Y + 140, C_USUARIO)
+    if not env.bandera_enemigo_en_base: dibujar_texto(p, f, " ", TABLA_X + 95, TABLA_Y + 140, C_USUARIO)
     
     dibujar_texto(p, f, str(env.movimientos_enemigo), TABLA_X + TABLA_ANCHO - 80, TABLA_Y + 100, C_ENEMIGO)
-    if not env.bandera_usuario_en_base: dibujar_texto(p, f, "CON BANDERA", TABLA_X + TABLA_ANCHO - 175, TABLA_Y + 140, C_ENEMIGO)
+    if not env.bandera_usuario_en_base: dibujar_texto(p, f, " ", TABLA_X + TABLA_ANCHO - 175, TABLA_Y + 140, C_ENEMIGO)
 
     w_marco = (env.columnas * ui.tamano_celda) + (GROSOR_MARCO * 2)
     h_marco = (env.filas * ui.tamano_celda) + (GROSOR_MARCO * 2)

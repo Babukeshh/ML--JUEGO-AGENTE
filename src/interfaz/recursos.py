@@ -1,10 +1,20 @@
 import pygame
 import sys
 import random
-from config import RUTA_IMG
+from config import RUTA_IMG, RUTA_AUDIO
 from src.interfaz.constantes import TAMANO_CELDA, ANCHO_PANTALLA, ALTO_PANTALLA, TABLA_ANCHO, TABLA_ALTO, SALIR_ANCHO, SALIR_ALTO
 
 class Recursos:
+    # Variables estáticas para los sonidos
+    s_paso_normal = None
+    s_paso_arena = None
+    s_canon = None
+    s_pikmin = None
+    s_fruta = None
+    s_victoria = None
+    s_derrota = None
+    sonidos_cargados = False
+
     @staticmethod
     def recortar_transparencia(imagen):
         r = imagen.get_bounding_rect(min_alpha=10)
@@ -18,6 +28,34 @@ class Recursos:
 
     @classmethod
     def cargar_todo(cls):
+        # --- CARGA DE AUDIO ---
+        try:
+            pygame.mixer.init()
+            cls.s_paso_normal = pygame.mixer.Sound(str(RUTA_AUDIO / "paso_1.wav"))
+            cls.s_paso_arena = pygame.mixer.Sound(str(RUTA_AUDIO / "paso_2.wav"))
+            cls.s_canon = pygame.mixer.Sound(str(RUTA_AUDIO / "canon.wav"))
+            cls.s_pikmin = pygame.mixer.Sound(str(RUTA_AUDIO / "atrapar_pikmin.wav"))
+            cls.s_fruta = pygame.mixer.Sound(str(RUTA_AUDIO / "atrapar_fruta.wav"))
+            cls.s_victoria = pygame.mixer.Sound(str(RUTA_AUDIO / "victoria.wav"))
+            cls.s_derrota = pygame.mixer.Sound(str(RUTA_AUDIO / "derrota.wav"))
+            
+            # Ajuste de volumen
+            cls.s_paso_normal.set_volume(0.6)
+            cls.s_paso_arena.set_volume(0.6)
+            cls.s_canon.set_volume(0.8)
+            cls.s_pikmin.set_volume(0.8)
+            
+            # Música de fondo
+            pygame.mixer.music.load(str(RUTA_AUDIO / "musica_fondo.wav"))
+            pygame.mixer.music.set_volume(0.2)
+            pygame.mixer.music.play(-1) # -1 significa Bucle Infinito
+            
+            cls.sonidos_cargados = True
+        except Exception as e:
+            print(f"Advertencia: No se pudieron cargar los sonidos ({e})")
+            cls.sonidos_cargados = False
+
+        # --- CARGA DE IMÁGENES ---
         try:
             cls.p_us = pygame.transform.smoothscale(pygame.image.load(str(RUTA_IMG / "pikminazul.png")).convert_alpha(), (85, 110))
             cls.p_en = pygame.transform.smoothscale(pygame.image.load(str(RUTA_IMG / "pikminrojo.png")).convert_alpha(), (85, 110))
@@ -44,7 +82,8 @@ class Recursos:
                 cls.f_inicio = pygame.transform.smoothscale(pygame.image.load(str(RUTA_IMG / "inicio.png")).convert(), (ANCHO_PANTALLA, ALTO_PANTALLA))
                 cls.b_aleat = pygame.transform.smoothscale(cls.recortar_transparencia(pygame.image.load(str(RUTA_IMG / "mapaaleatorio.png")).convert_alpha()), (275, 150))
                 cls.b_eval = pygame.transform.smoothscale(cls.recortar_transparencia(pygame.image.load(str(RUTA_IMG / "mapadeevaluacion.png")).convert_alpha()), (275, 150))
-            except: cls.f_inicio, cls.b_aleat, cls.b_eval = None, None, None
+            except: 
+                cls.f_inicio, cls.b_aleat, cls.b_eval = None, None, None
         except Exception as e:
             print(f"Error cargando imágenes: {e}")
             sys.exit()

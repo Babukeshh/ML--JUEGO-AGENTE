@@ -39,9 +39,26 @@ def inicializar_agentes(mapa_juego):
     enemigo.tau = 0.01
     return EntornoVisual(mapa_juego), enemigo
 
+def evaluar_efectos_audio(env, bandera_us_antes, bandera_en_antes, pos_us_antes, pos_en_antes):
+    if not Recursos.sonidos_cargados: return
+
+    # 1. Alguien robó o recuperó una bandera (Fruta)
+    if (bandera_us_antes and not env.bandera_usuario_en_base) or \
+       (bandera_en_antes and not env.bandera_enemigo_en_base):
+        Recursos.s_fruta.play()
+
+    # 2. Alguien murió (Colisión)
+    dist_us = abs(env.pos_usuario[0] - pos_us_antes[0]) + abs(env.pos_usuario[1] - pos_us_antes[1])
+    dist_en = abs(env.pos_enemigo[0] - pos_en_antes[0]) + abs(env.pos_enemigo[1] - pos_en_antes[1])
+    
+    if dist_us > 1 or dist_en > 1:
+        Recursos.s_pikmin.play()
+
+
 def iniciar_partida(p, ui, f, f_grande, reloj, mapa_inicial):
     env, enemigo = inicializar_agentes(mapa_inicial)
     terminado, estado, turno = False, "TURNO_USUARIO", "AZUL"
+    audio_fin_reproducido = False 
 
     while True:
         casillas_canon = None
@@ -53,20 +70,20 @@ def iniciar_partida(p, ui, f, f_grande, reloj, mapa_inicial):
 
             accion = None
             if estado == "TURNO_USUARIO":
-                # Control con teclado
                 if e.type == pygame.KEYDOWN:
                     if e.key in [pygame.K_w, pygame.K_UP]: accion = 0
                     elif e.key in [pygame.K_s, pygame.K_DOWN]: accion = 1
                     elif e.key in [pygame.K_a, pygame.K_LEFT]: accion = 2
                     elif e.key in [pygame.K_d, pygame.K_RIGHT]: accion = 3
 
-                # Control con mouse
                 elif e.type == pygame.MOUSEBUTTONDOWN:
                     mx, my = pygame.mouse.get_pos()
                     if pygame.Rect(SALIR_X, SALIR_Y, SALIR_ANCHO, SALIR_ALTO).collidepoint((mx, my)):
+                        pygame.mixer.music.stop() 
                         mapa = menu_principal(p, ui, f, f_grande, reloj)
                         env, enemigo = inicializar_agentes(mapa)
-                        terminado, estado, turno = False, "TURNO_USUARIO", "AZUL"
+                        terminado, estado, turno, audio_fin_reproducido = False, "TURNO_USUARIO", "AZUL", False
+                        if Recursos.sonidos_cargados: pygame.mixer.music.play(-1)
                         continue
 
                     if ui.offset_x <= mx < ui.offset_x + (env.columnas * ui.tamano_celda) and ui.offset_y <= my < ui.offset_y + (env.filas * ui.tamano_celda):
@@ -80,25 +97,57 @@ def iniciar_partida(p, ui, f, f_grande, reloj, mapa_inicial):
                 if accion is not None:
                     dx, dy = env.diccionario_acciones[accion]
                     nx, ny = env.pos_usuario[0] + dx, env.pos_usuario[1] + dy
-                    # Validar límites y muros para no cobrar turnos a lo loco
+                    
                     if 0 <= nx < env.filas and 0 <= ny < env.columnas and env.mapa[nx][ny] != 2:
+                        # 1. Sonidos de Pasos
+                        if Recursos.sonidos_cargados:
+                            if env.mapa[nx][ny] == 0: Recursos.s_paso_normal.play()
+                            elif env.mapa[nx][ny] == 1: Recursos.s_paso_arena.play()
+
+                        # 2. Guardar estado antes del turno
+                        band_us_antes, band_en_antes = env.bandera_usuario_en_base, env.bandera_enemigo_en_base
+                        pos_us_antes, pos_en_antes = env.pos_usuario, env.pos_enemigo
+                        
+                        # 3. Ejecutar paso
                         _, terminado = env.step(accion, True)
+                        
+                        # 4. Evaluar colisiones/banderas
+                        evaluar_efectos_audio(env, band_us_antes, band_en_antes, pos_us_antes, pos_en_antes)
+                        
                         if env.movimientos_usuario <= 0 or terminado:
                             estado, turno = ("TURNO_ENEMIGO", "ROJO") if not terminado else ("FIN", turno)
 
         if estado == "TURNO_ENEMIGO":
             dibujar_escenario(p, env, ui, f, turno)
             pygame.time.delay(400)
+            
             accion = enemigo.elegir_accion_softmax(env.obtener_estado_relativo(False))
+            
+            band_us_antes, band_en_antes = env.bandera_usuario_en_base, env.bandera_enemigo_en_base
+            pos_us_antes, pos_en_antes = env.pos_usuario, env.pos_enemigo
+            
+            # Sonidos de pasos IA
+            if Recursos.sonidos_cargados:
+                dx, dy = env.diccionario_acciones[accion]
+                nx, ny = env.pos_enemigo[0] + dx, env.pos_enemigo[1] + dy
+                if 0 <= nx < env.filas and 0 <= ny < env.columnas and env.mapa[nx][ny] != 2:
+                    if env.mapa[nx][ny] == 0: Recursos.s_paso_normal.play()
+                    elif env.mapa[nx][ny] == 1: Recursos.s_paso_arena.play()
+
             _, terminado = env.step(accion, False)
+            evaluar_efectos_audio(env, band_us_antes, band_en_antes, pos_us_antes, pos_en_antes)
 
             if env.movimientos_enemigo <= 0 or terminado:
                 if not terminado:
-                    # El cañón solo se dispara si falta alguna bandera
                     if env.canon_activo:
-                        _, casillas_canon = env.disparar_canon_visual()
+                        if Recursos.sonidos_cargados: Recursos.s_canon.play()
+                        
+                        impacto, casillas_canon = env.disparar_canon_visual()
                         dibujar_escenario(p, env, ui, f, "CANON", casillas_canon)
                         pygame.time.delay(1000)
+                        
+                        if impacto and Recursos.sonidos_cargados: Recursos.s_pikmin.play()
+                        
                     env.movimientos_usuario, env.movimientos_enemigo = 4, 4
                     estado, turno = "TURNO_USUARIO", "AZUL"
                 else: estado = "FIN"
@@ -108,6 +157,13 @@ def iniciar_partida(p, ui, f, f_grande, reloj, mapa_inicial):
         if estado == "FIN":
             msg = "¡VICTORIA!" if env.pos_usuario == env.base_usuario and not env.bandera_enemigo_en_base else "DERROTA"
             img_fin = Recursos.v_img if msg == "¡VICTORIA!" else Recursos.d_img
+            
+            if not audio_fin_reproducido and Recursos.sonidos_cargados:
+                pygame.mixer.music.stop()
+                if msg == "¡VICTORIA!": Recursos.s_victoria.play()
+                else: Recursos.s_derrota.play()
+                audio_fin_reproducido = True
+            
             if img_fin: p.blit(img_fin, ((ui.ancho - 420)//2, (ui.alto - 400)//2))
             else: dibujar_texto(p, f_grande, msg, ui.ancho//2, ui.offset_y + (env.filas*ui.tamano_celda) + 25, C_BASE_US if msg=="¡VICTORIA!" else C_ENEMIGO, "centro")
             pygame.display.flip()

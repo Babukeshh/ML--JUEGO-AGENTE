@@ -9,6 +9,7 @@ RUTA_LOGIC = RUTA_SRC / "logic"
 RUTA_INTERFAZ = RUTA_SRC / "interfaz"
 RUTA_MODELOS = RAIZ_PROYECTO / "model"
 RUTA_IMG = RAIZ_PROYECTO / "img"
+RUTA_AUDIO = RAIZ_PROYECTO / "audio"
 
 # Archivos específicos
 ARCHIVO_CEREBRO = RUTA_MODELOS / "agente_enemigo.pkl"
@@ -25,5 +26,5 @@ MAPA_EVALUACION = [
     [0, 2, 0, 0, 0, 0, 0, 0, 2, 0],
     [0, 2, 1, 2, 2, 2, 2, 0, 2, 0],
     [0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    [1,0, 1, 0, 1, 0, 1, 0, 1, 0]
+    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 ]
